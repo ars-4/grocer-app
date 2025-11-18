@@ -1,0 +1,7 @@
+.idx/
+lib/creds.dart
+build/
+.vscode
+GEMINI.md
+firebase-debug.log
+flutter_01.log
