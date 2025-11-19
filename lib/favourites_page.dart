@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:grocer/class/api_credentials.dart';
-import 'package:grocer/closed_shop.dart';
 import 'package:grocer/product_page.dart';
+import 'package:grocer/class/favourites_manager.dart';
+import 'package:grocer/class/product.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class FavouritesScreen extends StatefulWidget {
   final ApiCredentials apiCredentials;
@@ -13,62 +16,15 @@ class FavouritesScreen extends StatefulWidget {
 
 class FavouritesScreenState extends State<FavouritesScreen> {
   final TextEditingController _searchInput = TextEditingController();
-  bool productsLoaded = true;
-
-  final List _allProducts = [
-    {
-      "name": "Iced Tea",
-      "price": 100.00,
-      "image": "https://placehold.co/400x200/000000/fff.png",
-    },
-    {
-      "name": "Coffee",
-      "price": 150.00,
-      "image": "https://placehold.co/200x200/000000/fff.png",
-    },
-    {
-      "name": "Milk",
-      "price": 200.00,
-      "image": "https://placehold.co/200x200/000000/fff.png",
-    },
-    {
-      "name": "Bread",
-      "price": 250.00,
-      "image": "https://placehold.co/200x200/000000/fff.png",
-    },
-    {
-      "name": "Eggs",
-      "price": 300.00,
-      "image": "https://placehold.co/200x200/000000/fff.png",
-    },
-    {
-      "name": "Bananas",
-      "price": 350.00,
-      "image": "https://placehold.co/200x200/000000/fff.png",
-    },
-    {
-      "name": "Apples",
-      "price": 400.00,
-      "image": "https://placehold.co/200x200/000000/fff.png",
-    },
-    {
-      "name": "Oranges",
-      "price": 450.00,
-      "image": "https://placehold.co/200x200/000000/fff.png",
-    },
-    {
-      "name": "Grapes",
-      "price": 500.00,
-      "image": "https://placehold.co/200x200/000000/fff.png",
-    },
-  ];
-
-  List _filteredProducts = [];
+  List<Product> _allProducts = [];
+  List<Product> _filteredProducts = [];
+  Set<int> _favoriteIds = {};
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _filteredProducts = _allProducts;
+    _fetchFavoritesAndProducts();
     _searchInput.addListener(_filterProducts);
   }
 
@@ -78,6 +34,61 @@ class FavouritesScreenState extends State<FavouritesScreen> {
     super.dispose();
   }
 
+  Future<void> _fetchFavoritesAndProducts() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      _favoriteIds = await FavoritesManager.loadFavorites();
+
+      if (_favoriteIds.isEmpty) {
+        setState(() {
+          _allProducts = [];
+          _filteredProducts = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final List<Product> fetchedProducts = [];
+      final baseApiUrl = widget.apiCredentials.api;
+      final odooParams = widget.apiCredentials.odoo;
+
+      final fetchFutures = _favoriteIds.map((id) {
+        final url = Uri.parse('$baseApiUrl/product/$id$odooParams');
+        return http.get(url);
+      }).toList();
+
+      final responses = await Future.wait(fetchFutures);
+
+      for (var response in responses) {
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> json = jsonDecode(response.body);
+          final product = Product.fromJson(json);
+          fetchedProducts.add(product);
+        }
+      }
+
+      setState(() {
+        _allProducts = fetchedProducts;
+        _filteredProducts = _allProducts;
+        _isLoading = false;
+      });
+
+      _filterProducts();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load favorites: $error')),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   void _filterProducts() {
     final query = _searchInput.text.toLowerCase();
     setState(() {
@@ -85,7 +96,7 @@ class FavouritesScreenState extends State<FavouritesScreen> {
         _filteredProducts = _allProducts;
       } else {
         _filteredProducts = _allProducts.where((product) {
-          final productName = product["name"].toString().toLowerCase();
+          final productName = product.name.toLowerCase();
           return productName.contains(query);
         }).toList();
       }
@@ -93,9 +104,44 @@ class FavouritesScreenState extends State<FavouritesScreen> {
   }
 
   Future<void> _handleRefresh() async {
-    await Future.delayed(const Duration(seconds: 1));
     _searchInput.clear();
-    _filterProducts();
+    await _fetchFavoritesAndProducts();
+  }
+
+  bool isFavourite(int productID) {
+    return _favoriteIds.contains(productID);
+  }
+
+  void _toggleFavorite(int productID) async {
+    final bool currentlyFavorite = _favoriteIds.contains(productID);
+    setState(() {
+      if (currentlyFavorite) {
+        _favoriteIds.remove(productID);
+      } else {
+        _favoriteIds.add(productID);
+      }
+    });
+
+    if (currentlyFavorite) {
+      await FavoritesManager.unfavourited(productID);
+    } else {
+      await FavoritesManager.favourited(productID);
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            currentlyFavorite
+                ? 'Removed product $productID from your favorites!'
+                : 'Added product $productID to your favorites!',
+          ),
+          duration: const Duration(milliseconds: 800),
+        ),
+      );
+
+      _fetchFavoritesAndProducts();
+    }
   }
 
   @override
@@ -132,7 +178,7 @@ class FavouritesScreenState extends State<FavouritesScreen> {
                       style: const TextStyle(fontSize: 12),
                       cursorColor: Colors.amber,
                       decoration: const InputDecoration(
-                        hintText: "Search",
+                        hintText: "Search your favorites",
                         hintStyle: TextStyle(
                           fontSize: 16,
                           color: Colors.black38,
@@ -143,13 +189,34 @@ class FavouritesScreenState extends State<FavouritesScreen> {
                       ),
                     ),
                   ),
+                  if (_searchInput.text.isNotEmpty)
+                    GestureDetector(
+                      onTap: () {
+                        _searchInput.clear();
+                        _filterProducts();
+                      },
+                      child: const Icon(
+                        Icons.close,
+                        size: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
                 ],
               ),
             ),
 
             Expanded(
-              child: productsLoaded
-                  ? RefreshIndicator(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filteredProducts.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No favorites found, Go find something to wishlist.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, color: Colors.black54),
+                      ),
+                    )
+                  : RefreshIndicator(
                       onRefresh: _handleRefresh,
                       child: GridView.builder(
                         padding: const EdgeInsets.all(16),
@@ -170,7 +237,7 @@ class FavouritesScreenState extends State<FavouritesScreen> {
                                 MaterialPageRoute(
                                   builder: (context) {
                                     return ProductScreen(
-                                      id: 1,
+                                      id: product.id,
                                       apiCredentials: widget.apiCredentials,
                                     );
                                   },
@@ -187,10 +254,8 @@ class FavouritesScreenState extends State<FavouritesScreen> {
                               shadowColor: Colors.black12,
                             ),
                             child: SizedBox.expand(
-                              // Ensures the content fills the button area
                               child: Stack(
                                 children: [
-                                  // 1. The main content (Image, Name, Price)
                                   Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -201,7 +266,7 @@ class FavouritesScreenState extends State<FavouritesScreen> {
                                               top: Radius.circular(12),
                                             ),
                                         child: Image.network(
-                                          product["image"].toString(),
+                                          product.images.first.toString(),
                                           height: 120,
                                           width: double.infinity,
                                           fit: BoxFit.cover,
@@ -213,7 +278,7 @@ class FavouritesScreenState extends State<FavouritesScreen> {
                                           horizontal: 8,
                                         ),
                                         child: Text(
-                                          product["name"].toString(),
+                                          product.name.toString(),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           softWrap: true,
@@ -229,7 +294,7 @@ class FavouritesScreenState extends State<FavouritesScreen> {
                                           horizontal: 8,
                                         ),
                                         child: Text(
-                                          "Rs. ${product["price"]}",
+                                          "Rs. ${product.price}",
                                           style: const TextStyle(
                                             fontSize: 12,
                                             color: Colors.grey,
@@ -243,38 +308,18 @@ class FavouritesScreenState extends State<FavouritesScreen> {
                                     top: 0,
                                     right: 4,
                                     child: IconButton(
-                                      icon: const Icon(
-                                        Icons.favorite,
-                                        color: Colors.amber,
+                                      icon: Icon(
+                                        isFavourite(product.id)
+                                            ? Icons.favorite
+                                            : Icons.favorite_outline,
                                         size: 30,
+                                        color: Colors.amber,
                                       ),
-                                      onPressed: () {},
+                                      onPressed: () {
+                                        _toggleFavorite(product.id);
+                                      },
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(),
-                                    ),
-                                  ),
-
-                                  Positioned(
-                                    top: 10,
-                                    left: 10,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors
-                                            .amber, // Your desired yellow circle background
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: const Text(
-                                        "NEW", // The text you wanted
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
                                     ),
                                   ),
                                 ],
@@ -283,8 +328,7 @@ class FavouritesScreenState extends State<FavouritesScreen> {
                           );
                         },
                       ),
-                    )
-                  : const ClosedShopView(),
+                    ),
             ),
           ],
         ),

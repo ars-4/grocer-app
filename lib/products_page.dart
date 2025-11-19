@@ -5,6 +5,7 @@ import 'package:grocer/product_page.dart';
 import 'class/api_credentials.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:grocer/class/favourites_manager.dart';
 
 class ProductsScreen extends StatefulWidget {
   final int id;
@@ -26,12 +27,14 @@ class ProductsScreenState extends State<ProductsScreen> {
   List<Product> _allProducts = [];
   List<Product> _filteredProducts = [];
   bool _isLoading = true;
+  Set<int> _favoriteIds = {};
 
   @override
   void initState() {
     super.initState();
     _fetchProducts();
     _searchInput.addListener(_filterProducts);
+    _loadFavorites();
   }
 
   @override
@@ -61,6 +64,7 @@ class ProductsScreenState extends State<ProductsScreen> {
           _allProducts = products;
           _filteredProducts = _allProducts;
           _isLoading = false;
+          _loadFavorites();
         });
       } else {
         setState(() {
@@ -91,6 +95,55 @@ class ProductsScreenState extends State<ProductsScreen> {
   Future<void> _handleRefresh() async {
     _searchInput.clear();
     await _fetchProducts();
+    _loadFavorites();
+  }
+
+  Future<void> _loadFavorites() async {
+    final loadedIds = await FavoritesManager.loadFavorites();
+    if (mounted) {
+      setState(() {
+        _favoriteIds = loadedIds;
+        _isLoading = false;
+      });
+    }
+  }
+
+  bool isFavourite(int productID) {
+    if (_favoriteIds.contains(productID)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  void _toggleFavorite(int productID) async {
+    final bool currentlyFavorite = _favoriteIds.contains(productID);
+    setState(() {
+      if (currentlyFavorite) {
+        _favoriteIds.remove(productID);
+      } else {
+        _favoriteIds.add(productID);
+      }
+    });
+
+    if (currentlyFavorite) {
+      await FavoritesManager.unfavourited(productID);
+    } else {
+      await FavoritesManager.favourited(productID);
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            currentlyFavorite
+                ? 'Removed ${productID} from favorites!'
+                : 'Added ${productID} to favorites!',
+          ),
+          duration: const Duration(milliseconds: 800),
+        ),
+      );
+    }
   }
 
   @override
@@ -256,12 +309,16 @@ class ProductsScreenState extends State<ProductsScreen> {
                                     top: 0,
                                     right: 4,
                                     child: IconButton(
-                                      icon: const Icon(
-                                        Icons.favorite_outline,
+                                      icon: Icon(
+                                        isFavourite(product.id)
+                                            ? Icons.favorite
+                                            : Icons.favorite_outline,
                                         size: 30,
                                         color: Colors.black,
                                       ),
-                                      onPressed: () {},
+                                      onPressed: () {
+                                        _toggleFavorite(product.id);
+                                      },
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(),
                                     ),

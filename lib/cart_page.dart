@@ -21,8 +21,9 @@ class CartScreen extends StatefulWidget {
 class _CartScreenState extends State<CartScreen> {
   List<CartItem> _cartItems = [];
   Map<int, Product> _detailedProducts = {};
-
+  String? userId;
   bool _isLoading = true;
+  bool isPlacingOrder = false;
   static const String _cartKey = 'user_cart_items';
   final String _placeholderImage = "https://demo.schediazo.com/logo.jpg";
 
@@ -38,6 +39,7 @@ class _CartScreenState extends State<CartScreen> {
     });
 
     final prefs = await SharedPreferences.getInstance();
+    userId = prefs.getInt('user_id').toString();
     final String? cartString = prefs.getString(_cartKey);
 
     if (cartString != null && cartString.isNotEmpty) {
@@ -113,6 +115,85 @@ class _CartScreenState extends State<CartScreen> {
     _initCart();
   }
 
+  void _showSnackbar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: message.contains('Error') ? Colors.red : Colors.green,
+      ),
+    );
+  }
+
+  Future<void> createOrder() async {
+    if (_cartItems.isEmpty) {
+      _showSnackbar('Your cart is empty!');
+      return;
+    }
+    final int? customerId = int.tryParse(userId ?? '');
+
+    if (customerId == null || userId == null) {
+      _showSnackbar('Error: Authentication failed. Please re-login.');
+      return;
+    }
+    final productsPayload = _cartItems
+        .map((item) => {"id": item.id, "qty": item.qty})
+        .toList();
+    final orderPayload = {
+      "customer_id": customerId,
+      "products": productsPayload,
+    };
+
+    final body = jsonEncode(orderPayload);
+    final baseApiUrl = widget.apiCredentials.api;
+    final odooParams = widget.apiCredentials.odoo;
+    final url = Uri.parse('$baseApiUrl/create-order$odooParams');
+    setState(() {
+      isPlacingOrder = true;
+    });
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _showSnackbar(
+          'Order placed successfully! Order ID: ${jsonDecode(response.body)['order_id']}',
+        );
+        await _clearCartAndNavigate();
+      } else {
+        _showSnackbar(
+          'Error: Failed to place order. Status: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      _showSnackbar('Please check you internet connection');
+    } finally {
+      if (mounted) {
+        setState(() {
+          isPlacingOrder = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _clearCartAndNavigate() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_cartKey);
+    setState(() {
+      _cartItems.clear();
+      _detailedProducts.clear();
+    });
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => GroceryScreen(credentials: widget.apiCredentials),
+      ),
+      (Route<dynamic> route) => false,
+    );
+  }
+
   double _getItemTotal(double price, int quantity) {
     return price * quantity;
   }
@@ -170,9 +251,7 @@ class _CartScreenState extends State<CartScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    height: 10.0,
-                  ),
+                  SizedBox(height: 10.0),
 
                   _cartItems.isEmpty
                       ? const Center(
@@ -507,7 +586,9 @@ class _CartScreenState extends State<CartScreen> {
       child: SizedBox(
         height: 50,
         child: ElevatedButton(
-          onPressed: () {},
+          onPressed: () {
+            createOrder();
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.amber.withValues(alpha: 1),
             shape: RoundedRectangleBorder(

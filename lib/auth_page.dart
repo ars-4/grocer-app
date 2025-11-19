@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:grocer/class/api_credentials.dart';
-import 'package:grocer/grocer_app.dart';
+import 'package:grocer/otp_screen.dart';
 
 class GrocerAuthPage extends StatefulWidget {
   final ApiCredentials apiCredentials;
@@ -12,7 +12,6 @@ class GrocerAuthPage extends StatefulWidget {
 
 class _GrocerAuthPageState extends State<GrocerAuthPage> {
   bool isLogin = true;
-
   void toggleView() {
     setState(() {
       isLogin = !isLogin;
@@ -66,8 +65,7 @@ class LoginView extends StatefulWidget {
 
 class _LoginViewState extends State<LoginView> {
   final _formKey = GlobalKey<FormState>();
-  String phone = '';
-  String password = '';
+  String email = '';
 
   void _handleLogin() {
     if (_formKey.currentState!.validate()) {
@@ -76,7 +74,7 @@ class _LoginViewState extends State<LoginView> {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (context) =>
-              GroceryScreen(credentials: widget.apiCredentials),
+              OTPScreen(apiCredentials: widget.apiCredentials, email: email),
         ),
         (Route<dynamic> route) => false,
       );
@@ -93,24 +91,16 @@ class _LoginViewState extends State<LoginView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Image(image: AssetImage("assets/padlock.jpg"), height: 200.0),
+              SizedBox(height: 20.0),
               _buildInputContainer(
-                label: 'Phone Number',
-                hint: '+923... (required)',
-                icon: Icons.phone_android_outlined,
-                onSaved: (value) => phone = value ?? '',
-                keyboardType: TextInputType.phone,
+                label: 'Email Address',
+                hint: 'john@example.com...',
+                icon: Icons.email_outlined,
+                onSaved: (value) => email = value ?? '',
+                keyboardType: TextInputType.emailAddress,
                 validator: (value) =>
-                    value!.isEmpty ? 'Phone is required' : null,
-              ),
-              const SizedBox(height: 20),
-              _buildInputContainer(
-                label: 'Password',
-                hint: '******',
-                icon: Icons.lock_outline,
-                onSaved: (value) => password = value ?? '',
-                obscureText: true,
-                validator: (value) =>
-                    value!.isEmpty ? 'Password is required' : null,
+                    value!.isEmpty ? 'Email is required' : null,
               ),
               const SizedBox(height: 30),
 

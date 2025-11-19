@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:grocer/main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -8,8 +10,8 @@ class AccountScreen extends StatefulWidget {
 }
 
 class _AccountScreenState extends State<AccountScreen> {
-  final String _userName = "Fakhar Zaman";
-  final String _userEmail = "fakhar.zaman@schediazo.com";
+  String userName = "Fakhar Zaman";
+  String userEmail = "fakhar.zaman@schediazo.com";
   final String _userImage = "https://demo.schediazo.com/logo.jpg";
 
   final List<Map<String, dynamic>> _accountOptions = [
@@ -39,6 +41,44 @@ class _AccountScreenState extends State<AccountScreen> {
       "onTap": () => {},
     },
   ];
+
+  Future<void> loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? fetchedEmail = prefs.getString('user_email');
+    String? fetchedUserName = prefs.getString('user_name');
+    if (mounted) {
+      setState(() {
+        userEmail = fetchedEmail ?? '';
+        userName = fetchedUserName ?? '';
+      });
+    }
+  }
+
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_email');
+    await prefs.remove('user_name');
+    await prefs.remove('user_id');
+    await prefs.remove('user_favorites_ids');
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('You have been logged out!'),
+        backgroundColor: Colors.amber,
+      ),
+    );
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => GroceryApp()),
+      (Route<dynamic> route) => false,
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadUserData();
+  }
 
   final List<Map<String, dynamic>> _settingsOptions = [
     {
@@ -120,7 +160,7 @@ class _AccountScreenState extends State<AccountScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _userName,
+                  userName,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -129,7 +169,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _userEmail,
+                  userEmail,
                   style: const TextStyle(fontSize: 14, color: Colors.grey),
                 ),
               ],
@@ -187,7 +227,9 @@ class _AccountScreenState extends State<AccountScreen> {
       width: double.infinity,
       height: 50,
       child: OutlinedButton.icon(
-        onPressed: () {},
+        onPressed: () {
+          logout();
+        },
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: Colors.red, width: 1.5),
           shape: RoundedRectangleBorder(

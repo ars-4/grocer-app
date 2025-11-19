@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:grocer/main.dart';
 import 'package:grocer/suggested_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'class/api_credentials.dart';
