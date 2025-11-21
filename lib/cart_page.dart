@@ -20,7 +20,7 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   List<CartItem> _cartItems = [];
-  Map<int, Product> _detailedProducts = {};
+  final Map<int, Product> _detailedProducts = {};
   String? userId;
   bool _isLoading = true;
   bool isPlacingOrder = false;

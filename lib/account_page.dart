@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:grocer/class/api_credentials.dart';
 import 'package:grocer/main.dart';
+import 'package:grocer/orders_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AccountScreen extends StatefulWidget {
-  const AccountScreen({super.key});
+  final ApiCredentials apiCredentials;
+  const AccountScreen({super.key, required this.apiCredentials});
 
   @override
   State<AccountScreen> createState() => _AccountScreenState();
@@ -12,44 +15,20 @@ class AccountScreen extends StatefulWidget {
 class _AccountScreenState extends State<AccountScreen> {
   String userName = "Fakhar Zaman";
   String userEmail = "fakhar.zaman@schediazo.com";
+  late int _userId;
   final String _userImage = "https://demo.schediazo.com/logo.jpg";
-
-  final List<Map<String, dynamic>> _accountOptions = [
-    {
-      "title": "My Orders",
-      "icon": Icons.shopping_bag_outlined,
-      "onTap": () => {},
-    },
-    {
-      "title": "My Wallet",
-      "icon": Icons.account_balance_wallet_outlined,
-      "onTap": () => {},
-    },
-    {
-      "title": "Shipping Addresses",
-      "icon": Icons.location_on_outlined,
-      "onTap": () => {},
-    },
-    {
-      "title": "Favorite Products",
-      "icon": Icons.favorite_border,
-      "onTap": () => {},
-    },
-    {
-      "title": "Payment Methods",
-      "icon": Icons.credit_card_outlined,
-      "onTap": () => {},
-    },
-  ];
 
   Future<void> loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     String? fetchedEmail = prefs.getString('user_email');
     String? fetchedUserName = prefs.getString('user_name');
+    int? fetchedUserId = prefs.getInt('user_id');
+
     if (mounted) {
       setState(() {
         userEmail = fetchedEmail ?? '';
         userName = fetchedUserName ?? '';
+        _userId = fetchedUserId ?? 0;
       });
     }
   }
@@ -60,14 +39,14 @@ class _AccountScreenState extends State<AccountScreen> {
     await prefs.remove('user_name');
     await prefs.remove('user_id');
     await prefs.remove('user_favorites_ids');
-
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('You have been logged out!'),
         backgroundColor: Colors.amber,
       ),
     );
-
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => GroceryApp()),
       (Route<dynamic> route) => false,
@@ -103,15 +82,18 @@ class _AccountScreenState extends State<AccountScreen> {
             const SizedBox(height: 25),
             _buildSectionTitle("Account"),
             const SizedBox(height: 10),
-            ..._accountOptions
-                .map(
-                  (option) => _buildOptionTile(
-                    option["title"].toString(),
-                    option["icon"] as IconData,
-                    option["onTap"] as VoidCallback,
+            _buildOptionTile(
+              "Orders History",
+              Icons.shopping_bag_outlined,
+              () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => OrdersScreen(
+                    apiCredentials: widget.apiCredentials,
+                    customerId: _userId,
                   ),
-                )
-                .toList(),
+                ),
+              ),
+            ),
             const Divider(height: 30),
 
             _buildSectionTitle("Settings"),

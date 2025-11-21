@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:grocer/class/api_credentials.dart';
 import 'package:grocer/grocer_app.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class OTPScreen extends StatefulWidget {
@@ -79,7 +82,7 @@ class _OTPScreenState extends State<OTPScreen> {
     });
   }
 
-  void _verifyOTP() {
+  Future<void> _verifyOTP() async {
     final otpCode = _controllers.map((c) => c.text).join();
 
     if (otpCode.length < 6) {
@@ -92,35 +95,105 @@ class _OTPScreenState extends State<OTPScreen> {
       return;
     }
 
-    if (otpCode == "123456") {
-      saveUserData(name: "Imam ul Haq", email: widget.email, userId: 5);
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) =>
-              GroceryScreen(credentials: widget.apiCredentials),
-        ),
-        (Route<dynamic> route) => false,
+    try {
+      final Map<String, dynamic> requestBody = {
+        "email": widget.email,
+        "otp": int.parse(otpCode),
+      };
+      final baseApiUrl = widget.apiCredentials.api;
+      final odooParams = widget.apiCredentials.odoo;
+      final url = Uri.parse('$baseApiUrl/customer/login$odooParams');
+      final response = await http.post(
+        url,
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(requestBody),
       );
-    } else {
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> userData = jsonDecode(response.body);
+        saveUserData(
+          userId: userData['id'],
+          name: userData['name'],
+          email: userData['email'],
+        );
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) =>
+                GroceryScreen(credentials: widget.apiCredentials),
+          ),
+          (Route<dynamic> route) => false,
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Verification failed. Try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Verification failed. That code is just tragic, try again!',
-          ),
-          backgroundColor: Colors.red,
+          content: Text('An unexpected error occured.'),
+          backgroundColor: Colors.orange,
         ),
       );
     }
   }
 
-  void _resendOTP() {
-    _startTimer();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('New OTP sent! Check your email'),
-        backgroundColor: Colors.green,
-      ),
-    );
+  Future<void> _resendOTP() async {
+    try {
+      final Map<String, dynamic> requestBody = {"email": widget.email};
+      final baseApiUrl = widget.apiCredentials.api;
+      final odooParams = widget.apiCredentials.odoo;
+      final url = Uri.parse('$baseApiUrl/customer/login$odooParams');
+      final response = await http.post(
+        url,
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(requestBody),
+      );
+      if (response.statusCode == 200) {
+        _startTimer();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('New OTP sent! Check your email'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else if (response.statusCode == 404) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: Customer email not found on the server.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to resend OTP.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('A network error occurred. Check your connection.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
   }
 
   void _handleOTPInput(String value, int index) {

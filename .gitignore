@@ -5,3 +5,5 @@ build/
 GEMINI.md
 firebase-debug.log
 flutter_01.log
+.dart_tool/
+.idea

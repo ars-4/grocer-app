@@ -137,8 +137,8 @@ class ProductsScreenState extends State<ProductsScreen> {
         SnackBar(
           content: Text(
             currentlyFavorite
-                ? 'Removed ${productID} from favorites!'
-                : 'Added ${productID} to favorites!',
+                ? 'Removed $productID from favorites!'
+                : 'Added $productID to favorites!',
           ),
           duration: const Duration(milliseconds: 800),
         ),

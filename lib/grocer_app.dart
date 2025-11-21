@@ -4,6 +4,8 @@ import 'package:grocer/cart_page.dart';
 import 'package:grocer/account_page.dart';
 import 'package:grocer/class/api_credentials.dart';
 import 'package:grocer/favourites_page.dart';
+import 'package:grocer/orders_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class GroceryScreen extends StatefulWidget {
   final ApiCredentials credentials;
@@ -15,18 +17,31 @@ class GroceryScreen extends StatefulWidget {
 
 class _GroceryScreenState extends State<GroceryScreen> {
   int _selectedIndex = 0;
+  int userId = 0;
   late PageController _pageController;
   late List<Widget> _pages;
+
+  Future<void> loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    int? fetchedUserId = prefs.getInt('user_id');
+
+    if (mounted) {
+      setState(() {
+        userId = fetchedUserId ?? 0;
+      });
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    loadUserData();
     _pageController = PageController();
     _pages = <Widget>[
       CategoryScreen(apiCredentials: widget.credentials),
       FavouritesScreen(apiCredentials: widget.credentials),
       CartScreen(apiCredentials: widget.credentials),
-      AccountScreen(),
+      AccountScreen(apiCredentials: widget.credentials),
     ];
   }
 
@@ -37,7 +52,7 @@ class _GroceryScreenState extends State<GroceryScreen> {
   }
 
   final List<String> _titles = [
-    '418B2 Johar Town, Lahore',
+    'Your Address',
     'Favourites',
     'Cart',
     'Account',
@@ -138,8 +153,13 @@ class _GroceryScreenState extends State<GroceryScreen> {
                     title: const Text('Order History'),
                     onTap: () {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Order History Tapped!')),
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => OrdersScreen(
+                            apiCredentials: widget.credentials,
+                            customerId: userId,
+                          ),
+                        ),
                       );
                     },
                   ),

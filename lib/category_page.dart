@@ -39,7 +39,6 @@ class CategoryScreenState extends State<CategoryScreen> {
       _isLoading = true;
       _hasError = false;
     });
-    print("Running");
     final baseApiUrl = widget.apiCredentials.api;
     final url = Uri.parse(
       '$baseApiUrl/categories${widget.apiCredentials.odoo}',
@@ -54,7 +53,6 @@ class CategoryScreenState extends State<CategoryScreen> {
               try {
                 return ProductCategory.fromJson(json);
               } catch (e) {
-                print("Failed to parse category JSON: $json. Error: $e");
                 return null;
               }
             })
@@ -68,14 +66,14 @@ class CategoryScreenState extends State<CategoryScreen> {
           _isLoading = false;
         });
       } else {
-        print("API returned status code ${response.statusCode}");
+        debugPrint("API returned status code ${response.statusCode}");
         setState(() {
           _isLoading = false;
           _hasError = true;
         });
       }
     } catch (error) {
-      print("An Unexpected Error during fetch: " + error.toString());
+      debugPrint("An Unexpected Error during fetch: ${error.toString()}");
       setState(() {
         _isLoading = false;
         _hasError = true;

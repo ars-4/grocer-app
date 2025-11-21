@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:grocer/class/api_credentials.dart';
 import 'package:grocer/creds.dart';
 import 'package:grocer/auth_page.dart';
+import 'package:grocer/splash_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:grocer/grocer_app.dart';
 
@@ -17,6 +18,7 @@ class GroceryApp extends StatefulWidget {
 }
 
 class _GroceryAppState extends State<GroceryApp> {
+  bool _isLoading = true;
   bool isLoggedIn = false;
 
   Future<String?> getUserEmail() async {
@@ -31,34 +33,38 @@ class _GroceryAppState extends State<GroceryApp> {
   }
 
   Future<void> checkLoginStatus() async {
+    await Future.delayed(const Duration(seconds: 1));
+
     final userEmail = await getUserEmail();
-    if (userEmail != null && userEmail.isNotEmpty) {
+    if (mounted) {
       setState(() {
-        isLoggedIn = true;
+        isLoggedIn = (userEmail != null && userEmail.isNotEmpty);
+        _isLoading = false;
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final apiCredentials = ApiCredentials(
+      api: api,
+      odoo: '?ODOO_DB=$odooDBName&ODOO_USER=$odooUser&ODOO_PASS=$odooPass',
+    );
+
+    Widget homeScreen;
+
+    if (_isLoading) {
+      homeScreen = const SplashScreen();
+    } else if (isLoggedIn) {
+      homeScreen = GroceryScreen(credentials: apiCredentials);
+    } else {
+      homeScreen = GrocerAuthPage(apiCredentials: apiCredentials);
+    }
+
     return MaterialApp(
       title: 'Schediazo\'s Grocery App',
       theme: ThemeData(primarySwatch: Colors.amber, useMaterial3: true),
-      home: isLoggedIn
-          ? GroceryScreen(
-              credentials: ApiCredentials(
-                api: api,
-                odoo:
-                    '?ODOO_DB=$odooDBName&ODOO_USER=$odooUser&ODOO_PASS=$odooPass',
-              ),
-            )
-          : GrocerAuthPage(
-              apiCredentials: ApiCredentials(
-                api: api,
-                odoo:
-                    '?ODOO_DB=$odooDBName&ODOO_USER=$odooUser&ODOO_PASS=$odooPass',
-              ),
-            ),
+      home: homeScreen,
     );
   }
 }

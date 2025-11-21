@@ -118,7 +118,7 @@ class _ProductScreenState extends State<ProductScreen> {
     setState(() {
       _currentCartQuantity = newQuantity;
     });
-
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(

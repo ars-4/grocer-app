@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:grocer/class/api_credentials.dart';
 import 'package:grocer/otp_screen.dart';
+import 'package:http/http.dart' as http;
 
 class GrocerAuthPage extends StatefulWidget {
   final ApiCredentials apiCredentials;
@@ -66,18 +68,53 @@ class LoginView extends StatefulWidget {
 class _LoginViewState extends State<LoginView> {
   final _formKey = GlobalKey<FormState>();
   String email = '';
+  bool isLoading = false;
 
-  void _handleLogin() {
+  void _showSnackBar(String message, String type) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.black)),
+        backgroundColor: type == "error" ? Colors.red : Colors.amber,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) =>
-              OTPScreen(apiCredentials: widget.apiCredentials, email: email),
-        ),
-        (Route<dynamic> route) => false,
-      );
+      setState(() {
+        isLoading = true;
+      });
+
+      final baseApiUrl = widget.apiCredentials.api;
+      final odooParams = widget.apiCredentials.odoo;
+      final url = Uri.parse('$baseApiUrl/customer/login$odooParams');
+      try {
+        await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({"email": email}),
+        );
+        _showSnackBar("Welcome Back!", "msg");
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) =>
+                OTPScreen(apiCredentials: widget.apiCredentials, email: email),
+          ),
+          (Route<dynamic> route) => false,
+        );
+      } catch (e) {
+        _showSnackBar("An Unexpexted error Occured ${e.toString()}", "error");
+      } finally {
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+          });
+        }
+      }
     }
   }
 
@@ -106,7 +143,7 @@ class _LoginViewState extends State<LoginView> {
 
               _buildActionButton(
                 label: 'Login',
-                onPressed: _handleLogin,
+                onPressed: isLoading ? null : _handleLogin,
                 isPrimary: true,
               ),
               const SizedBox(height: 20),
@@ -144,11 +181,19 @@ class _SignUpViewState extends State<SignUpView> {
   String _street = '';
   String _street2 = '';
   String _city = '';
-  int _stateId = 0;
   String _zip = '';
-  int _countryId = 0;
 
-  void _handleSignup() {
+  void _showSnackBar(String message, String type) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.black)),
+        backgroundColor: type == "error" ? Colors.red : Colors.amber,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _handleSignup() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
@@ -159,24 +204,29 @@ class _SignUpViewState extends State<SignUpView> {
         "street": _street,
         "street2": _street2,
         "city": _city,
-        "state_id": _stateId,
         "zip": _zip,
-        "country_id": _countryId,
       };
 
-      debugPrint("Signup Data: $userData");
-      widget.onToggle();
+      final body = jsonEncode(userData);
+      final baseApiUrl = widget.apiCredentials.api;
+      final odooParams = widget.apiCredentials.odoo;
+      final url = Uri.parse('$baseApiUrl/customer/signup$odooParams');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Account created! Please log in',
-            style: TextStyle(color: Colors.black),
-          ),
-          backgroundColor: Colors.amber,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      try {
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: body,
+        );
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          widget.onToggle();
+          _showSnackBar("Account created, Please login", "msg");
+        } else {
+          _showSnackBar("This account already exists", "error");
+        }
+      } catch (e) {
+        _showSnackBar("An Unexpexted error Occured ${e.toString()}", "error");
+      }
     }
   }
 
@@ -268,31 +318,7 @@ class _SignUpViewState extends State<SignUpView> {
                           value!.isEmpty ? 'Zip is required' : null,
                     ),
                   ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: _buildInputContainer(
-                      label: 'State ID',
-                      hint: '5',
-                      icon: Icons.numbers,
-                      onSaved: (value) =>
-                          _stateId = int.tryParse(value ?? '0') ?? 0,
-                      keyboardType: TextInputType.number,
-                      validator: (value) =>
-                          value!.isEmpty ? 'State ID is required' : null,
-                    ),
-                  ),
                 ],
-              ),
-              const SizedBox(height: 15),
-              _buildInputContainer(
-                label: 'Country ID',
-                hint: '1',
-                icon: Icons.flag_outlined,
-                onSaved: (value) =>
-                    _countryId = int.tryParse(value ?? '0') ?? 0,
-                keyboardType: TextInputType.number,
-                validator: (value) =>
-                    value!.isEmpty ? 'Country ID is required' : null,
               ),
 
               const SizedBox(height: 30),
@@ -383,7 +409,7 @@ Widget _buildInputContainer({
 
 Widget _buildActionButton({
   required String label,
-  required VoidCallback onPressed,
+  required VoidCallback? onPressed,
   required bool isPrimary,
 }) {
   return SizedBox(
