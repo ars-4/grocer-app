@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:grocer/class/api_credentials.dart';
+import 'package:grocer/utils/api_credentials_class.dart';
 import 'package:grocer/creds.dart';
-import 'package:grocer/auth_page.dart';
-import 'package:grocer/splash_screen.dart';
+import 'package:grocer/pages/grocer_auth_page.dart';
+import 'package:grocer/pages/splash_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:grocer/grocer_app.dart';
+import 'package:grocer/pages/grocer_app.dart';
 
 void main() {
   runApp(const GroceryApp());
