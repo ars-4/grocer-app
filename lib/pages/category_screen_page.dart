@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:grocer/utils/api_credentials_class.dart';
 import 'package:grocer/pages/closed_shop_page.dart';
@@ -211,12 +212,12 @@ class CategoryScreenState extends State<CategoryScreen> {
                                   borderRadius: const BorderRadius.vertical(
                                     top: Radius.circular(12),
                                   ),
-                                  child: Image.network(
-                                    category.imageUrl.toString(),
+                                  child: CachedNetworkImage(
+                                    imageUrl: category.imageUrl.toString(),
                                     height: 140,
                                     width: double.infinity,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
+                                    errorWidget: (context, url, error) {
                                       return Container(
                                         height: 140,
                                         color: Colors.grey[200],
@@ -228,6 +229,17 @@ class CategoryScreenState extends State<CategoryScreen> {
                                         ),
                                       );
                                     },
+                                    placeholder: (context, url) => Container(
+                                      height: 140,
+                                      width: double.infinity,
+                                      color: Colors.grey[300],
+                                      child: const Center(
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.0,
+                                          color: Colors.amber,
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -239,7 +251,7 @@ class CategoryScreenState extends State<CategoryScreen> {
                                     category.name.toString(),
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.black,
                                     ),

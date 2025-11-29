@@ -5,8 +5,11 @@ import 'package:grocer/pages/grocer_auth_page.dart';
 import 'package:grocer/pages/splash_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:grocer/pages/grocer_app.dart';
+import 'package:grocer/utils/cache_service.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  CacheService().init();
   runApp(const GroceryApp());
 }
 

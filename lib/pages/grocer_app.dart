@@ -9,7 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class GroceryScreen extends StatefulWidget {
   final ApiCredentials credentials;
-  const GroceryScreen({super.key, required this.credentials});
+  final int index;
+  const GroceryScreen({super.key, required this.credentials, this.index = 0});
 
   @override
   State<GroceryScreen> createState() => _GroceryScreenState();
@@ -18,16 +19,20 @@ class GroceryScreen extends StatefulWidget {
 class _GroceryScreenState extends State<GroceryScreen> {
   int _selectedIndex = 0;
   int userId = 0;
+  String userAddress = "Your Address";
   late PageController _pageController;
   late List<Widget> _pages;
 
   Future<void> loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     int? fetchedUserId = prefs.getInt('user_id');
+    String? fetchedUserAddress = prefs.getString('user_address');
 
     if (mounted) {
       setState(() {
         userId = fetchedUserId ?? 0;
+        userAddress = fetchedUserAddress ?? "No Delivery Address";
+        _titles[0] = userAddress;
       });
     }
   }
@@ -35,8 +40,9 @@ class _GroceryScreenState extends State<GroceryScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.index;
     loadUserData();
-    _pageController = PageController();
+    _pageController = PageController(initialPage: _selectedIndex);
     _pages = <Widget>[
       CategoryScreen(apiCredentials: widget.credentials),
       FavouritesScreen(apiCredentials: widget.credentials),

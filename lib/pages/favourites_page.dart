@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:grocer/utils/api_credentials_class.dart';
 import 'package:grocer/pages/product_page.dart';
@@ -265,11 +266,42 @@ class FavouritesScreenState extends State<FavouritesScreen> {
                                             const BorderRadius.vertical(
                                               top: Radius.circular(12),
                                             ),
-                                        child: Image.network(
-                                          product.images.first.toString(),
+                                        child: CachedNetworkImage(
+                                          imageUrl: product.images.first
+                                              .toString(),
                                           height: 120,
                                           width: double.infinity,
                                           fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              Container(
+                                                height: 120,
+                                                width: double.infinity,
+                                                color: Colors.grey[200],
+                                                child: const Center(
+                                                  child: SizedBox(
+                                                    height: 30,
+                                                    width: 30,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 3.0,
+                                                          color: Colors.amber,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ),
+                                          errorWidget: (context, url, error) =>
+                                              Container(
+                                                height: 120,
+                                                width: double.infinity,
+                                                color: Colors.grey[300],
+                                                child: const Center(
+                                                  child: Icon(
+                                                    Icons.shopping_bag_outlined,
+                                                    color: Colors.black45,
+                                                    size: 40,
+                                                  ),
+                                                ),
+                                              ),
                                         ),
                                       ),
                                       const SizedBox(height: 8),

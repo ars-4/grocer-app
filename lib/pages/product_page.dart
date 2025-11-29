@@ -213,7 +213,7 @@ class _ProductScreenState extends State<ProductScreen> {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) =>
-                  GroceryScreen(credentials: widget.apiCredentials),
+                  GroceryScreen(credentials: widget.apiCredentials, index: 2),
             ),
           );
         },

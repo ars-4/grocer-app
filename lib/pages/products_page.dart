@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:grocer/utils/product_class.dart';
 import 'package:grocer/pages/closed_shop_page.dart';
@@ -270,11 +271,42 @@ class ProductsScreenState extends State<ProductsScreen> {
                                             const BorderRadius.vertical(
                                               top: Radius.circular(12),
                                             ),
-                                        child: Image.network(
-                                          product.image.toString(),
+                                        child: CachedNetworkImage(
+                                          imageUrl: product.image.toString(),
                                           height: 120,
                                           width: double.infinity,
                                           fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              Container(
+                                                height: 120,
+                                                width: double.infinity,
+                                                color: Colors.grey[200],
+                                                child: const Center(
+                                                  child: SizedBox(
+                                                    height: 30,
+                                                    width: 30,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 3.0,
+                                                          color: Colors.amber,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ),
+                                          errorWidget: (context, url, error) =>
+                                              Container(
+                                                height: 120,
+                                                width: double.infinity,
+                                                color: Colors.grey[300],
+                                                child: const Center(
+                                                  child: Icon(
+                                                    Icons
+                                                        .sentiment_dissatisfied,
+                                                    color: Colors.black45,
+                                                    size: 40,
+                                                  ),
+                                                ),
+                                              ),
                                         ),
                                       ),
                                       const SizedBox(height: 8),

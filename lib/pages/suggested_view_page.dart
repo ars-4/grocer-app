@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:grocer/utils/api_credentials_class.dart';
 import 'package:grocer/utils/favourites_manager.dart';
@@ -189,12 +190,12 @@ class SuggestedProductsState extends State<SuggestedProducts> {
                                 borderRadius: const BorderRadius.vertical(
                                   top: Radius.circular(12),
                                 ),
-                                child: Image.network(
-                                  imageUrl,
+                                child: CachedNetworkImage(
+                                  imageUrl: imageUrl,
                                   height: 120,
                                   width: double.infinity,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
+                                  errorWidget: (context, url, error) {
                                     return Container(
                                       height: 120,
                                       color: Colors.grey[200],
@@ -206,6 +207,18 @@ class SuggestedProductsState extends State<SuggestedProducts> {
                                       ),
                                     );
                                   },
+                                  placeholder: (context, url) => Container(
+                                    height: 120,
+                                    width: double.infinity,
+                                    color: Colors
+                                        .grey[300], 
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.0,
+                                        color: Colors.amber
+                                      ), 
+                                    ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 8),

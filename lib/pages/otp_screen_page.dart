@@ -41,11 +41,13 @@ class _OTPScreenState extends State<OTPScreen> {
     required String name,
     required String email,
     required int userId,
+    required String userAddress,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_name', name);
     await prefs.setString('user_email', email);
     await prefs.setInt('user_id', userId);
+    await prefs.setString('user_address', userAddress);
   }
 
   @override
@@ -102,7 +104,7 @@ class _OTPScreenState extends State<OTPScreen> {
       };
       final baseApiUrl = widget.apiCredentials.api;
       final odooParams = widget.apiCredentials.odoo;
-      final url = Uri.parse('$baseApiUrl/customer/login$odooParams');
+      final url = Uri.parse('$baseApiUrl/auth$odooParams');
       final response = await http.post(
         url,
         headers: <String, String>{
@@ -117,6 +119,7 @@ class _OTPScreenState extends State<OTPScreen> {
           userId: userData['id'],
           name: userData['name'],
           email: userData['email'],
+          userAddress: userData['street'],
         );
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
