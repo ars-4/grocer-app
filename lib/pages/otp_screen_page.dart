@@ -115,7 +115,7 @@ class _OTPScreenState extends State<OTPScreen> {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> userData = jsonDecode(response.body);
-        saveUserData(
+        await saveUserData(
           userId: userData['id'],
           name: userData['name'],
           email: userData['email'],
